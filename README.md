@@ -10,7 +10,7 @@
 
 **A digital library and collaborative space for Ethiopian university students to share and access academic resources.**
 
-[Features](#✨-features) • [Demo](#🚀-demo) • [Installation](#📦-installation) • [Usage](#💻-usage) • [Contributing](#🤝-contributing) • [License](#📄-license)
+ 
 
 </div>
 
@@ -174,14 +174,6 @@ Found a bug? Please open an issue with:
 - Expected vs actual behavior
 - Screenshots (if applicable)
 - Environment details
-
----
-
-## 🏆 Contributors
-
-<a href="https://github.com/yourusername/student-resource-hub/graphs/contributors">
-  <img src="https://contributors-img.web.app/image?repo=yourusername/student-resource-hub" />
-</a>
 
 ---
 
