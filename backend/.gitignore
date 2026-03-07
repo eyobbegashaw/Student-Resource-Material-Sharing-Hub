@@ -1,0 +1,21 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+
+# Environment variables (በጣም አስፈላጊ!)
+.env
+
+# Database
+db.sqlite3
+*.postgres
+
+# Media & Static
+media/
+staticfiles/
+
+# IDEs
+.vscode/
+.idea/
