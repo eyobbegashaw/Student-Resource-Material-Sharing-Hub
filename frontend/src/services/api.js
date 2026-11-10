@@ -1,6 +1,17 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const getApiBaseUrl = () => {
+  if (process.env.REACT_APP_API_URL) {
+    if (typeof window !== 'undefined' && window.location.hostname === '127.0.0.1') {
+      return process.env.REACT_APP_API_URL.replace('localhost', '127.0.0.1');
+    }
+    return process.env.REACT_APP_API_URL;
+  }
+  const host = typeof window !== 'undefined' && window.location.hostname === '127.0.0.1' ? '127.0.0.1' : 'localhost';
+  return `http://${host}:8000/api`;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -25,30 +36,7 @@ api.interceptors.request.use(
 // Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-    
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      
-      try {
-        // Try to refresh token
-        const refreshToken = localStorage.getItem('refresh_token');
-        if (refreshToken) {
-          const response = await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {
-            refresh: refreshToken,
-          });
-          
-          localStorage.setItem('access_token', response.data.access);
-          api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
-          return api(originalRequest);
-        }
-      } catch (refreshError) {
-        // Redirect to login
-        window.location.href = '/login';
-      }
-    }
-    
+  (error) => {
     return Promise.reject(error);
   }
 );
@@ -57,9 +45,13 @@ api.interceptors.response.use(
 export const authAPI = {
   login: (credentials) => api.post('/auth/login/', credentials),
   register: (userData) => api.post('/auth/register/', userData),
+  verifyOTP: (data) => api.post('/auth/verify-otp/', data),
+  resendOTP: (data) => api.post('/auth/resend-otp/', data),
+  googleLogin: (payload) => api.post('/auth/google/', payload),
   logout: () => api.post('/auth/logout/'),
   getProfile: () => api.get('/auth/profile/'),
   updateProfile: (data) => api.patch('/auth/profile/', data),
+  changePassword: (data) => api.post('/auth/change-password/', data),
 };
 
 // Universities API
@@ -75,15 +67,18 @@ export const resourcesAPI = {
   getAll: (params) => api.get('/resources/', { params }),
   getById: (id) => api.get(`/resources/${id}/`),
   create: (data) => {
-    const formData = new FormData();
-    Object.keys(data).forEach(key => {
-      if (data[key] !== null && data[key] !== undefined) {
-        formData.append(key, data[key]);
-      }
-    });
-    return api.post('/resources/', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    if (data && data.file) {
+      const formData = new FormData();
+      Object.keys(data).forEach(key => {
+        if (data[key] !== null && data[key] !== undefined) {
+          formData.append(key, data[key]);
+        }
+      });
+      return api.post('/resources/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+    return api.post('/resources/', data);
   },
   update: (id, data) => api.patch(`/resources/${id}/`, data),
   delete: (id) => api.delete(`/resources/${id}/`),
@@ -91,6 +86,8 @@ export const resourcesAPI = {
   view: (id) => api.post(`/resources/${id}/view/`),
   getTopRated: () => api.get('/resources/top_rated/'),
   getMostDownloaded: () => api.get('/resources/most_downloaded/'),
+  getStats: () => api.get('/resources/stats/'),
+  getFilterOptions: () => api.get('/resources/filter_options/'),
 };
 
 // Comments API
@@ -105,10 +102,30 @@ export const commentsAPI = {
 
 // Ratings API
 export const ratingsAPI = {
+  getMyRatings: () => api.get('/ratings/'),
   getByResource: (resourceId) => api.get('/ratings/', { params: { resource: resourceId } }),
   create: (data) => api.post('/ratings/', data),
   update: (id, data) => api.patch(`/ratings/${id}/`, data),
   delete: (id) => api.delete(`/ratings/${id}/`),
+};
+
+// Downloads API (Student Download History)
+export const downloadsAPI = {
+  getHistory: (params) => api.get('/downloads/', { params }),
+  clearHistory: () => api.delete('/downloads/clear_history/'),
+};
+
+// Notifications API
+export const notificationsAPI = {
+  getAll: (params) => api.get('/notifications/', { params }),
+  markAsRead: (id) => api.post(`/notifications/${id}/read/`),
+  markAllRead: () => api.post('/notifications/mark_all_read/'),
+  getUnreadCount: () => api.get('/notifications/unread_count/'),
+};
+
+// Contact API
+export const contactAPI = {
+  send: (data) => api.post('/contact/', data),
 };
 
 export default api;

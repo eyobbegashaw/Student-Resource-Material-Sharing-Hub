@@ -1,4 +1,5 @@
 module.exports = {
+  darkMode: 'class',
   content: [
     "./src/**/*.{js,jsx,ts,tsx}",
   ],
@@ -20,7 +21,7 @@ module.exports = {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        amharic: ['Noto Sans Ethiopic', 'sans-serif'],
+        amharic: ['"Noto Serif Ethiopic"', 'serif'],
       },
     },
   },

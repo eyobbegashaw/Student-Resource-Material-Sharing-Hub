@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="hubGrad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#4f46e5" />
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="url(#hubGrad)" />
+  <!-- Academic Cap / Graduation Hat in crisp white -->
+  <path d="M16 8L5 13.5L16 19L27 13.5L16 8Z" fill="#ffffff" />
+  <path d="M9.5 17.2V21.5C9.5 23.3 12.4 24.8 16 24.8C19.6 24.8 22.5 23.3 22.5 21.5V17.2L16 20.5L9.5 17.2Z" fill="#ffffff" fill-opacity="0.95" />
+  <path d="M26.5 13.5V20.5" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" />
+  <circle cx="26.5" cy="21" r="1.2" fill="#ffffff" />
+</svg>

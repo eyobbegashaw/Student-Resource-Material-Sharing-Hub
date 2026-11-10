@@ -14,7 +14,7 @@ schema_view = get_schema_view(
         title="Student Resource Hub API",
         default_version='v1',
         description="API for Student Resource & Material Sharing Hub",
-        contact=openapi.Contact(email="admin@studenthub.edu.et"),
+        contact=openapi.Contact(email="eyobbegashaw075@gmail.com"),
         license=openapi.License(name="MIT License"),
     ),
     public=True,
@@ -23,9 +23,6 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/auth/', include('apps.accounts.urls')),
-    path('api/universities/', include('apps.university.urls')),
-    path('api/resources/', include('apps.resources.urls')),
     path('api/', include('apps.api.urls')),
     
     # API documentation

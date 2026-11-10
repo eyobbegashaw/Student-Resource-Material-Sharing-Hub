@@ -1,4 +1,5 @@
 from rest_framework import viewsets, permissions, filters
+from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import University, Department, Course
 from .serializers import UniversitySerializer, DepartmentSerializer, CourseSerializer
@@ -12,6 +13,12 @@ class UniversityViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['name', 'code']
     ordering_fields = ['name', 'created_at']
 
+    def list(self, request, *args, **kwargs):
+        try:
+            return super().list(request, *args, **kwargs)
+        except Exception:
+            return Response([])
+
 class DepartmentViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet for viewing departments"""
     serializer_class = DepartmentSerializer
@@ -22,11 +29,20 @@ class DepartmentViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['name', 'created_at']
     
     def get_queryset(self):
-        queryset = Department.objects.filter(is_active=True)
-        university_id = self.request.query_params.get('university', None)
-        if university_id:
-            queryset = queryset.filter(university_id=university_id)
-        return queryset
+        try:
+            queryset = Department.objects.filter(is_active=True)
+            university_id = self.request.query_params.get('university', None)
+            if university_id:
+                queryset = queryset.filter(university_id=university_id)
+            return queryset
+        except Exception:
+            return Department.objects.none()
+
+    def list(self, request, *args, **kwargs):
+        try:
+            return super().list(request, *args, **kwargs)
+        except Exception:
+            return Response([])
 
 class CourseViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet for viewing courses"""

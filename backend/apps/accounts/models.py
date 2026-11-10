@@ -22,10 +22,21 @@ class User(AbstractUser):
         blank=True,
         related_name='students'
     )
+    # Student Profile Details
+    university_name = models.CharField(max_length=200, blank=True, default='')
+    department_name = models.CharField(max_length=200, blank=True, default='')
     year_of_study = models.PositiveSmallIntegerField(null=True, blank=True)
     student_id = models.CharField(max_length=50, unique=True, null=True, blank=True)
-    profile_picture = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
+    profile_picture = models.FileField(upload_to='profile_pics/', null=True, blank=True)
     is_email_verified = models.BooleanField(default=False)
+    
+    # Student Settings & Preferences
+    theme_preference = models.CharField(max_length=10, default='light')
+    notify_new_resources = models.BooleanField(default=True)
+    notify_comments = models.BooleanField(default=True)
+    email_notifications = models.BooleanField(default=False)
+    show_name_on_publish = models.BooleanField(default=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -55,15 +66,48 @@ class User(AbstractUser):
         return f"{self.get_full_name()} ({self.email})"
     
     def clean(self):
-        """Validate university email domain"""
+        """Validate and normalize email and student_id"""
         super().clean()
         if self.email:
-            # Check if email ends with .edu.et
-            if not self.email.lower().endswith('.edu.et'):
-                raise ValidationError({'email': 'Only university email addresses (.edu.et) are allowed.'})
-            
-            # Additional validation for specific universities can be added here
+            self.email = self.email.lower().strip()
+        if not self.student_id or not str(self.student_id).strip():
+            self.student_id = None
+        else:
+            self.student_id = str(self.student_id).strip()
             
     def save(self, *args, **kwargs):
+        if not self.student_id or not str(self.student_id).strip():
+            self.student_id = None
+        else:
+            self.student_id = str(self.student_id).strip()
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+class EmailOTP(models.Model):
+    """Stores 6-digit one-time passcodes for email verification upon registration"""
+    user = models.ForeignKey(
+        'User',
+        on_delete=models.CASCADE,
+        related_name='email_otps',
+        null=True,
+        blank=True
+    )
+    email = models.EmailField(db_index=True)
+    otp = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Email OTP'
+        verbose_name_plural = 'Email OTPs'
+
+    def __str__(self):
+        return f"OTP for {self.email} ({self.otp}) - Used: {self.is_used}"
+
+    def is_valid(self):
+        from django.utils import timezone
+        return (not self.is_used) and (timezone.now() <= self.expires_at)
+

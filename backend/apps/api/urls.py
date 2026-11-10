@@ -3,6 +3,8 @@ from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
+from apps.accounts.views import ContactMessageView
+
 schema_view = get_schema_view(
     openapi.Info(
         title="Student Resource Hub API",
@@ -15,6 +17,7 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('auth/', include('apps.accounts.urls')),
+    path('contact/', ContactMessageView.as_view(), name='contact-message'),
     path('', include('apps.university.urls')),
     path('', include('apps.resources.urls')),
 ]

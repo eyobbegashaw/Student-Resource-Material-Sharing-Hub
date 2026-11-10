@@ -4,6 +4,7 @@ Django settings for core project.
 
 from pathlib import Path
 from decouple import config
+import dj_database_url
 import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -13,9 +14,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='your-secret-key-here')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=False, cast=bool)
+DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = ['*'] if DEBUG else config('ALLOWED_HOSTS', default='localhost,127.0.0.1,*.app.github.dev,*.githubpreview.dev').split(',')
 
 # Application definition
 INSTALLED_APPS = [
@@ -71,17 +72,42 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
-# Database
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME', default='student_hub'),
-        'USER': config('DB_USER', default='postgres'),
-        'PASSWORD': config('DB_PASSWORD', default='eyob12345'),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='5432'),
+# Database - Supabase PostgreSQL configuration
+DATABASE_URL = config('DATABASE_URL', default=None)
+
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=config('CONN_MAX_AGE', default=0, cast=int),
+            conn_health_checks=True,
+            ssl_require=True,
+        )
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('DB_NAME', default='postgres'),
+            'USER': config('DB_USER', default='postgres'),
+            'PASSWORD': config('DB_PASSWORD', default=''),
+            'HOST': config('DB_HOST', default=''),
+            'PORT': config('DB_PORT', default='6543'),
+            'CONN_MAX_AGE': config('CONN_MAX_AGE', default=0, cast=int),
+            'OPTIONS': {
+                'sslmode': config('DB_SSLMODE', default='require'),
+            },
+        }
+    }
+
+# Fallback to local SQLite only if explicitly requested
+if config('USE_SQLITE', default=False, cast=bool):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -142,7 +168,7 @@ AUTH_USER_MODEL = 'accounts.User'
 # REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.SessionAuthentication',
+        'apps.accounts.authentication.CsrfExemptSessionAuthentication',
         'rest_framework.authentication.TokenAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
@@ -159,11 +185,59 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings
-CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000').split(',')
+CORS_ALLOW_ALL_ORIGINS = DEBUG
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+]
+if config('CORS_ALLOWED_ORIGINS', default=''):
+    for origin in config('CORS_ALLOWED_ORIGINS').split(','):
+        cleaned = origin.strip()
+        if cleaned and cleaned not in CORS_ALLOWED_ORIGINS:
+            CORS_ALLOWED_ORIGINS.append(cleaned)
+
 CORS_ALLOW_CREDENTIALS = True
 
-# Email settings (for production, use SMTP)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # Development only
+# CSRF settings for frontend SPA
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'https://*.app.github.dev',
+    'https://*.githubpreview.dev',
+]
+
+# Email settings (supports console for development, SMTP for production)
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com').strip()
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='').strip()
+# Automatically clean spaces or dashes from Google 16-letter App Passwords (e.g. 'abcd efgh ijkl mnop' -> 'abcdefghijklmnop')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='').replace(' ', '').replace('-', '').strip()
+
+if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    raw_from = config('DEFAULT_FROM_EMAIL', default='').strip()
+    if raw_from and '<' in raw_from:
+        DEFAULT_FROM_EMAIL = raw_from
+    elif raw_from:
+        DEFAULT_FROM_EMAIL = f'StudentHub <{raw_from}>'
+    else:
+        DEFAULT_FROM_EMAIL = f'StudentHub <{EMAIL_HOST_USER}>'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    DEFAULT_FROM_EMAIL = 'StudentHub <noreply@studenthub.et>'
 
 # University email domain for authentication
 ALLOWED_EMAIL_DOMAINS = ['edu.et', 'student.ethiouniversity.edu.et']  # Add more as needed
+
+# Google OAuth Configuration
+GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
+GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET', default='')
+GOOGLE_CALLBACK_URL = config('GOOGLE_CALLBACK_URL', default='http://localhost:8000/api/auth/google/')

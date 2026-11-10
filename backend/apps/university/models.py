@@ -7,7 +7,7 @@ class University(models.Model):
     code = models.CharField(max_length=20, unique=True)
     address = models.TextField(blank=True)
     website = models.URLField(blank=True)
-    logo = models.ImageField(upload_to='university_logos/', null=True, blank=True)
+    logo = models.FileField(upload_to='university_logos/', null=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
