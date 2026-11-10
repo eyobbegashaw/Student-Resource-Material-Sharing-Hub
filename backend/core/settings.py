@@ -16,7 +16,7 @@ SECRET_KEY = config('SECRET_KEY', default='your-secret-key-here')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = ['*'] if DEBUG else config('ALLOWED_HOSTS', default='localhost,127.0.0.1,*.app.github.dev,*.githubpreview.dev').split(',')
+ALLOWED_HOSTS = ['*'] if DEBUG else [h.strip() for h in config('ALLOWED_HOSTS', default='localhost,127.0.0.1,*.app.github.dev,*.githubpreview.dev,.onrender.com,*.onrender.com').split(',') if h.strip()]
 
 # Application definition
 INSTALLED_APPS = [
@@ -43,6 +43,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -139,11 +140,12 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# AWS S3 Configuration (for production)
-if not DEBUG:
-    AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
-    AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
+# Static & Media Storage Configuration
+USE_S3 = config('USE_S3', default=False, cast=bool)
+if USE_S3 and config('AWS_STORAGE_BUCKET_NAME', default=''):
+    AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
+    AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')
+    AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME', default='')
     AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default='eu-west-1')
     AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
     AWS_DEFAULT_ACL = 'private'
@@ -158,6 +160,9 @@ if not DEBUG:
     
     # S3 media settings
     DEFAULT_FILE_STORAGE = 'core.storage_backends.MediaStorage'
+else:
+    # Production Whitenoise storage for static assets
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -185,7 +190,7 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = DEBUG
+CORS_ALLOW_ALL_ORIGINS = DEBUG or config('CORS_ALLOW_ALL_ORIGINS', default=False, cast=bool)
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
@@ -202,6 +207,11 @@ if config('CORS_ALLOWED_ORIGINS', default=''):
 
 CORS_ALLOW_CREDENTIALS = True
 
+# Automatically allow Vercel deployment and preview URLs
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https:\/\/.*\.vercel\.app$",
+]
+
 # CSRF settings for frontend SPA
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:3000',
@@ -210,7 +220,14 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:5173',
     'https://*.app.github.dev',
     'https://*.githubpreview.dev',
+    'https://*.vercel.app',
+    'https://*.onrender.com',
 ]
+if config('CSRF_TRUSTED_ORIGINS', default=''):
+    for origin in config('CSRF_TRUSTED_ORIGINS').split(','):
+        cleaned = origin.strip()
+        if cleaned and cleaned not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(cleaned)
 
 # Email settings (supports console for development, SMTP for production)
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com').strip()
