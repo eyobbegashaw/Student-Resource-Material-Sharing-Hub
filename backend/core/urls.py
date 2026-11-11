@@ -5,9 +5,25 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import JsonResponse
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+
+
+def health_check(request):
+    """Lightweight root and health endpoint for Render health probes."""
+    return JsonResponse({
+        "status": "ok",
+        "service": "Student Resource & Material Sharing Hub API",
+        "endpoints": {
+            "api": "/api/",
+            "swagger": "/swagger/",
+            "redoc": "/redoc/",
+            "admin": "/admin/",
+        },
+    })
+
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -22,6 +38,9 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
+    path('', health_check, name='root-health'),
+    path('health/', health_check, name='health-check'),
+    path('api/health/', health_check, name='api-health-check'),
     path('admin/', admin.site.urls),
     path('api/', include('apps.api.urls')),
     

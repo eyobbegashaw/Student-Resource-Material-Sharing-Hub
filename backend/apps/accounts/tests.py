@@ -16,14 +16,31 @@ class AccountsEndpointTests(TestCase):
             student_id='ETS/1001/14'
         )
 
-    def test_login_success(self):
+    def test_login_success_and_bearer_token_auth(self):
         res = self.client.post('/api/auth/login/', {
             'email': 'teststudent@example.com',
             'password': 'Password123!'
         }, format='json')
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertIn('user', res.data)
+        self.assertIn('token', res.data)
+        self.assertIsNotNone(res.data['token'])
         self.assertEqual(res.data['user']['email'], 'teststudent@example.com')
+
+        # Verify Bearer token authentication works without cookies
+        anon_client = APIClient()
+        profile_res = anon_client.get(
+            '/api/auth/profile/',
+            HTTP_AUTHORIZATION=f"Bearer {res.data['token']}"
+        )
+        self.assertEqual(profile_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(profile_res.data['email'], 'teststudent@example.com')
+
+    def test_health_endpoints(self):
+        for url in ['/', '/health/', '/api/health/']:
+            res = self.client.get(url)
+            self.assertEqual(res.status_code, status.HTTP_200_OK)
+            self.assertEqual(res.json()['status'], 'ok')
 
     def test_login_invalid_password(self):
         res = self.client.post('/api/auth/login/', {

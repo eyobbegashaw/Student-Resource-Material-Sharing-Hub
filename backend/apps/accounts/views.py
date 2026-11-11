@@ -5,7 +5,6 @@ from datetime import timedelta
 from rest_framework import status, generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.authentication import TokenAuthentication
 from django.contrib.auth import login, logout, update_session_auth_hash
 from django.utils import timezone
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -17,7 +16,17 @@ from .serializers import (
     ChangePasswordSerializer
 )
 from .models import User, EmailOTP
-from .authentication import CsrfExemptSessionAuthentication
+from .authentication import CsrfExemptSessionAuthentication, FlexibleTokenAuthentication
+
+
+def _get_auth_token(user):
+    """Get or create DRF auth token for cross-origin SPA requests."""
+    try:
+        from rest_framework.authtoken.models import Token
+        token, _ = Token.objects.get_or_create(user=user)
+        return token.key
+    except Exception:
+        return None
 
 def send_otp_email(email, otp_code):
     subject = f"{otp_code} is your StudentHub verification code"
@@ -264,6 +273,7 @@ class LoginView(APIView):
         login(request, user)
         return Response({
             'user': UserProfileSerializer(user).data,
+            'token': _get_auth_token(user),
             'message': 'Login successful'
         }, status=status.HTTP_200_OK)
 
@@ -280,15 +290,16 @@ class GoogleOAuthView(APIView):
         code = request.GET.get('code')
         error = request.GET.get('error')
         from django.shortcuts import redirect
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000').rstrip('/')
 
         if error:
-            return redirect('http://localhost:3000/login?error=' + error)
+            return redirect(f'{frontend_url}/login?error=' + error)
         if not code:
-            return redirect('http://localhost:3000/login')
+            return redirect(f'{frontend_url}/login')
 
         token_data = self._exchange_code(code)
         if not token_data:
-            return redirect('http://localhost:3000/login?error=token_exchange_failed')
+            return redirect(f'{frontend_url}/login?error=token_exchange_failed')
 
         user, is_new = self._process_google_auth(
             request=request,
@@ -296,8 +307,8 @@ class GoogleOAuthView(APIView):
             email=None
         )
         if user:
-            return redirect('http://localhost:3000/dashboard')
-        return redirect('http://localhost:3000/login?error=auth_failed')
+            return redirect(f'{frontend_url}/dashboard')
+        return redirect(f'{frontend_url}/login?error=auth_failed')
 
     def post(self, request):
         code = request.data.get('code')
@@ -327,6 +338,7 @@ class GoogleOAuthView(APIView):
         requires_onboarding = not bool(user.university_name or user.university) or not bool(user.department_name or user.department) or not bool(user.year_of_study)
         return Response({
             'user': UserProfileSerializer(user).data,
+            'token': _get_auth_token(user),
             'is_new_user': is_new,
             'requires_onboarding': requires_onboarding,
             'message': 'Google authentication successful'
@@ -414,7 +426,7 @@ class GoogleOAuthView(APIView):
 
 class LogoutView(APIView):
     permission_classes = [permissions.AllowAny]
-    authentication_classes = [CsrfExemptSessionAuthentication, TokenAuthentication]
+    authentication_classes = [FlexibleTokenAuthentication, CsrfExemptSessionAuthentication]
     
     def post(self, request):
         return self._do_logout(request)
@@ -463,7 +475,7 @@ class LogoutView(APIView):
 class ProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = UserProfileSerializer
     permission_classes = [permissions.AllowAny]
-    authentication_classes = [CsrfExemptSessionAuthentication, TokenAuthentication]
+    authentication_classes = [FlexibleTokenAuthentication, CsrfExemptSessionAuthentication]
     
     def get(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
@@ -502,7 +514,7 @@ class ChangePasswordView(APIView):
     Validates current password and updates to new password.
     """
     permission_classes = [permissions.IsAuthenticated]
-    authentication_classes = [CsrfExemptSessionAuthentication, TokenAuthentication]
+    authentication_classes = [FlexibleTokenAuthentication, CsrfExemptSessionAuthentication]
 
     def post(self, request):
         serializer = ChangePasswordSerializer(data=request.data)

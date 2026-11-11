@@ -39,6 +39,9 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       localStorage.removeItem('logged_out');
       const response = await authAPI.login(credentials);
+      if (response.data?.token) {
+        localStorage.setItem('access_token', response.data.token);
+      }
       setUser(response.data.user);
       return response.data;
     } catch (err) {
@@ -93,6 +96,9 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       localStorage.removeItem('logged_out');
       const response = await authAPI.googleLogin(payload);
+      if (response.data?.token) {
+        localStorage.setItem('access_token', response.data.token);
+      }
       setUser(response.data.user);
       return response.data;
     } catch (err) {

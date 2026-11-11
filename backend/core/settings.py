@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     
     # Third party apps
     'rest_framework',
+    'rest_framework.authtoken',
     'corsheaders',
     'django_filters',
     'drf_yasg',
@@ -184,8 +185,8 @@ AUTH_USER_MODEL = 'accounts.User'
 # REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
+        'apps.accounts.authentication.FlexibleTokenAuthentication',
         'apps.accounts.authentication.CsrfExemptSessionAuthentication',
-        'rest_framework.authentication.TokenAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
@@ -265,7 +266,16 @@ else:
 # University email domain for authentication
 ALLOWED_EMAIL_DOMAINS = ['edu.et', 'student.ethiouniversity.edu.et']  # Add more as needed
 
-# Google OAuth Configuration
+# Google OAuth & Frontend Redirect Configuration
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000').rstrip('/')
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
 GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET', default='')
 GOOGLE_CALLBACK_URL = config('GOOGLE_CALLBACK_URL', default='http://localhost:8000/api/auth/google/')
+
+# Proxy & Cross-Site Cookie Configuration (Render HTTPS <-> Vercel HTTPS)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+if not DEBUG:
+    SESSION_COOKIE_SAMESITE = 'None'
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SAMESITE = 'None'
+    CSRF_COOKIE_SECURE = True
