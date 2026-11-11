@@ -85,6 +85,7 @@ if DATABASE_URL:
             ssl_require=True,
         )
     }
+    DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
 else:
     DATABASES = {
         'default': {
@@ -133,14 +134,16 @@ USE_I18N = True
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+os.makedirs(STATIC_ROOT, exist_ok=True)
+WHITENOISE_USE_FINDERS = True
 
 # Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Static & Media Storage Configuration
+# Static & Media Storage Configuration (Django 6.0 STORAGES dict)
 USE_S3 = config('USE_S3', default=False, cast=bool)
 if USE_S3 and config('AWS_STORAGE_BUCKET_NAME', default=''):
     AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
@@ -152,17 +155,25 @@ if USE_S3 and config('AWS_STORAGE_BUCKET_NAME', default=''):
     AWS_S3_OBJECT_PARAMETERS = {
         'CacheControl': 'max-age=86400',
     }
-    
-    # S3 static settings
     STATIC_LOCATION = 'static'
     STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{STATIC_LOCATION}/'
-    STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    
-    # S3 media settings
-    DEFAULT_FILE_STORAGE = 'core.storage_backends.MediaStorage'
+    STORAGES = {
+        'default': {
+            'BACKEND': 'core.storage_backends.MediaStorage',
+        },
+        'staticfiles': {
+            'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
+        },
+    }
 else:
-    # Production Whitenoise storage for static assets
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+    STORAGES = {
+        'default': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+        },
+    }
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
